@@ -2,27 +2,36 @@ import { error } from '@pnotify/core';
 import '@pnotify/core/dist/BrightTheme.css';
 import * as basicLightbox from 'basiclightbox';
 
-import './styles.css';
+import './styles.scss';
 import imageCardTpl from './tamplates/imageCardTpl.hbs';
 import PicturesApiService from './apiService';
-import Button from './button';
 
 const searchFormEl = document.querySelector('.search-form');
 const galleryEl = document.querySelector('.gallery');
-const btn = new Button('.load-more-btn');
+const btnRef = document.querySelector('.load-more-btn');
 
+let galleryArr = [];
+let total = 0;
+const inputRef = document.querySelector('#search-input');
 searchFormEl.addEventListener('submit', onSearch);
-btn.btnEl.addEventListener('click', fatchAndRenderPage);
+btnRef.addEventListener('click', fatchAndRenderPage);
 
 const picturesApiService = new PicturesApiService();
 
 function onSearch(e) {
-  e.preventDefault();
+  e.preventDefault();  
+  const value = inputRef.value.trim();
+  if (value === ' ' || value.length === 0) {
+    inputRef.focus();
+    inputRef.select();
+    btnRef.style.display = 'none';
+    return
+  }  
   cleanGallery();
   picturesApiService.resetPage();
-  picturesApiService.searchQuery = e.currentTarget.elements.query.value;
+  picturesApiService.searchQuery = value;
   fatchAndRenderPage();
-  btn.enable();
+
 }
 
 function cleanGallery() {
@@ -32,7 +41,18 @@ function cleanGallery() {
 function fatchAndRenderPage() {
   picturesApiService
     .fetchImages()
-    .then(renderGallery)
+    .then(res => {
+      total = res.total;
+      galleryArr = res.hits;
+      console.log(total, galleryArr)
+      if (total = 0) {
+        inputRef.focus();
+        inputRef.select();
+        return
+      }
+      renderGallery(galleryArr);
+      })
+    // .then(renderGallery)
     .catch(err =>
       error({
         text: err,
@@ -44,7 +64,10 @@ function fatchAndRenderPage() {
     );
 }
 
-function renderGallery({ hits }) {
+function renderGallery(hits) {
+  if (total = 0 || total <= 12) {
+    btnRef.style.display = 'none';
+  }
   if (!hits.length) {
     error({
       text: `enter correct word`,
@@ -55,6 +78,7 @@ function renderGallery({ hits }) {
     });
     return;
   }
+  btnRef.style.display = 'inline';
   const gallery = imageCardTpl(hits);
   galleryEl.insertAdjacentHTML('beforeend', gallery);
   galleryEl.scrollIntoView({
